@@ -2042,9 +2042,15 @@ static int cpufreq_set_policy(struct cpufreq_policy *policy,
 	blocking_notifier_call_chain(&cpufreq_policy_notifier_list,
 			CPUFREQ_ADJUST, new_policy);
 
+	pr_debug("incompatible new min and max freqs are %u - %u kHz\n",
+		new_policy->min, new_policy->max);
+
 	/* adjust if necessary - hardware incompatibility*/
 	blocking_notifier_call_chain(&cpufreq_policy_notifier_list,
 			CPUFREQ_INCOMPATIBLE, new_policy);
+
+	pr_debug("incompatible new min and max freqs are %u - %u kHz\n",
+		new_policy->min, new_policy->max);
 
 	/*
 	 * verify the cpu speed can be set within this limit, which might be
@@ -2062,7 +2068,7 @@ static int cpufreq_set_policy(struct cpufreq_policy *policy,
 	policy->max = new_policy->max;
 	trace_cpu_frequency_limits(policy->max, policy->min, policy->cpu);
 
-	pr_debug("new min and max freqs are %u - %u kHz\n",
+	pr_err("new min and max freqs are %u - %u kHz\n",
 					policy->min, policy->max);
 
 	if (cpufreq_driver->setpolicy) {
