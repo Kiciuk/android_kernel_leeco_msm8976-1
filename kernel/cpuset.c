@@ -115,9 +115,9 @@ struct cpuset {
 };
 
 /* Retrieve the cpuset for a cgroup */
-static inline struct cpuset *cgroup_cs(struct cgroup *cgrp)
+static inline struct cpuset *cgroup_cs(struct cgroup *cont)
 {
-	return container_of(cgroup_subsys_state(cgrp, cpuset_subsys_id),
+	return container_of(cgroup_subsys_state(cont, cpuset_subsys_id),
 			    struct cpuset, css);
 }
 
@@ -432,7 +432,7 @@ static void free_trial_cpuset(struct cpuset *trial)
 
 static int validate_change(const struct cpuset *cur, const struct cpuset *trial)
 {
-	struct cgroup *cgrp;
+	struct cgroup *cont;
 	struct cpuset *c, *par;
 	int ret;
 
@@ -440,7 +440,7 @@ static int validate_change(const struct cpuset *cur, const struct cpuset *trial)
 
 	/* Each of our child cpusets must be a subset of us */
 	ret = -EBUSY;
-	cpuset_for_each_child(c, cgrp, cur)
+	cpuset_for_each_child(c, cont, cur)
 		if (!is_cpuset_subset(c, trial))
 			goto out;
 
@@ -461,7 +461,7 @@ static int validate_change(const struct cpuset *cur, const struct cpuset *trial)
 	 * overlap
 	 */
 	ret = -EINVAL;
-	cpuset_for_each_child(c, cgrp, par) {
+	cpuset_for_each_child(c, cont, par) {
 		if ((is_cpu_exclusive(trial) || is_cpu_exclusive(c)) &&
 		    c != cur &&
 		    cpumask_intersects(trial->cpus_allowed, c->cpus_allowed))
@@ -1770,13 +1770,13 @@ static size_t cpuset_sprintf_memlist(char *page, struct cpuset *cs)
 	return count;
 }
 
-static ssize_t cpuset_common_file_read(struct cgroup *cgrp,
+static ssize_t cpuset_common_file_read(struct cgroup *cont,
 				       struct cftype *cft,
 				       struct file *file,
 				       char __user *buf,
 				       size_t nbytes, loff_t *ppos)
 {
-	struct cpuset *cs = cgroup_cs(cgrp);
+	struct cpuset *cs = cgroup_cs(cont);
 	cpuset_filetype_t type = cft->private;
 	char *page;
 	ssize_t retval = 0;
@@ -1806,9 +1806,9 @@ out:
 	return retval;
 }
 
-static u64 cpuset_read_u64(struct cgroup *cgrp, struct cftype *cft)
+static u64 cpuset_read_u64(struct cgroup *cont, struct cftype *cft)
 {
-	struct cpuset *cs = cgroup_cs(cgrp);
+	struct cpuset *cs = cgroup_cs(cont);
 	cpuset_filetype_t type = cft->private;
 	switch (type) {
 	case FILE_CPU_EXCLUSIVE:
@@ -1837,9 +1837,9 @@ static u64 cpuset_read_u64(struct cgroup *cgrp, struct cftype *cft)
 	return 0;
 }
 
-static s64 cpuset_read_s64(struct cgroup *cgrp, struct cftype *cft)
+static s64 cpuset_read_s64(struct cgroup *cont, struct cftype *cft)
 {
-	struct cpuset *cs = cgroup_cs(cgrp);
+	struct cpuset *cs = cgroup_cs(cont);
 	cpuset_filetype_t type = cft->private;
 	switch (type) {
 	case FILE_SCHED_RELAX_DOMAIN_LEVEL:
@@ -1951,14 +1951,14 @@ static struct cftype files[] = {
 
 /*
  *	cpuset_css_alloc - allocate a cpuset css
- *	cgrp:	control group that the new cpuset will be part of
+ *	cont:	control group that the new cpuset will be part of
  */
 
-static struct cgroup_subsys_state *cpuset_css_alloc(struct cgroup *cgrp)
+static struct cgroup_subsys_state *cpuset_css_alloc(struct cgroup *cont)
 {
 	struct cpuset *cs;
 
-	if (!cgrp->parent)
+	if (!cont->parent)
 		return &top_cpuset.css;
 
 	cs = kzalloc(sizeof(*cs), GFP_KERNEL);
@@ -2053,9 +2053,9 @@ static void cpuset_css_offline(struct cgroup *cgrp)
  * will call rebuild_sched_domains_locked().
  */
 
-static void cpuset_css_free(struct cgroup *cgrp)
+static void cpuset_css_free(struct cgroup *cont)
 {
-	struct cpuset *cs = cgroup_cs(cgrp);
+	struct cpuset *cs = cgroup_cs(cont);
 
 	free_cpumask_var(cs->cpus_allowed);
 	kfree(cs);
